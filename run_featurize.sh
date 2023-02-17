@@ -2,9 +2,9 @@
 gpuid=1
 epoch=100
 model_name=EGNN
-data_path='/home/wangbei/workspace/hypergraph2021/code/HyperDTD/data/'
-save_path='/home/wangbei/workspace/hypergraph2021/code/EGNN/checkpoints'
-emb_path='/home/wangbei/workspace/hypergraph2021/code/EGNN/embs'
+data_path='./workspace/hypergraph2021/code/HyperDTD/data/'
+save_path='./workspace/hypergraph2021/code/EGNN/checkpoints'
+emb_path='./workspace/hypergraph2021/code/EGNN/embs'
 lr=0.001
 l2=1e-5
 test_ratio=0.3
