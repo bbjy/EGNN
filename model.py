@@ -14,11 +14,7 @@ from layers import *
 import datetime
 from sklearn import metrics
 import gc
-'''
-author: wangbei
-2021.04.06 09:49
-Model for the 'Hypergraph neural network for drug-protein-disease prediction, short for HDPD'
-'''
+
 def trans_to_cuda(variable):
   if torch.cuda.is_available():
     return variable.cuda()
@@ -46,8 +42,6 @@ class HGNN(nn.Module):
     def __init__(self, HT, input_size, n_hid, output_size, dropout=0.0, isdropout=False):
         super(HGNN,self).__init__()
         self.dropout = dropout
-        # self.layer1 = HyperGraphLayerSparse(input_size, n_hid, dropout=self.dropout, alpha=0.2, transfer=False, concat=True)
-        # self.layer2 = HyperGraphLayerSparse(n_hid, output_size, dropout=self.dropout, alpha=0.2, transfer=False, concat=False)
         self.layer1 = HyperAttentionLayer(HT, input_size, n_hid, dropout=self.dropout, alpha=0.2, transfer=False, concat=True)
         self.layer2 = HyperAttentionLayer(HT, n_hid, output_size, dropout=self.dropout, alpha=0.2, transfer=False, concat=False)
 
@@ -98,21 +92,17 @@ class HDPD(nn.Module):
                     nn.ReLU(),
                     nn.AdaptiveMaxPool1d(1))
 
-            # 对疾病的表示先按照随机初始化来吧
             self.embedding_dis = nn.Embedding(self.num_disease, self.emb_size)
-            # self.bn3 = torch.nn.BatchNorm1d(self.emb_size)        
         
         else:
             self.embedding_fp = nn.Embedding(self.num_drug, self.emb_size).cuda()
             self.embedding_xt = nn.Embedding(self.num_target, self.emb_size).cuda()
             self.embedding_dis = nn.Embedding(self.num_disease, self.emb_size).cuda()
-            # self.embedding_edge = nn.Embedding(self.num_event, self.emb_size).cuda()
 
         self.fc = nn.Linear(self.out_featSize,1,bias=True)
 
         self.leakyrelu = nn.LeakyReLU(0.1)
         self.relu = nn.ReLU()
-        #self.loss_function = nn.CrossEntropyLoss()
         self.bceloss = nn.BCELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=opt.lr, weight_decay=opt.l2)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=opt.lr_dc_step, gamma=opt.lr_dc)
@@ -124,24 +114,13 @@ class HDPD(nn.Module):
 
     def reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.emb_size)
-        # for weight in self.parameters():
-        #     weight.data.uniform_(-stdv, stdv)
         nn.init.uniform_(self.embedding_fp.weight.data, -stdv, stdv)    
         nn.init.uniform_(self.embedding_xt.weight.data, -stdv, stdv)    
         nn.init.uniform_(self.embedding_dis.weight.data, -stdv, stdv)
-        # nn.init.uniform_(self.embedding_edge.weight.data, -stdv, stdv)  
 
-    # def compute_scores(self, inputs):
-    #   if torch.cuda.is_available():
-    #       inputs = inputs.cuda()
-        
-    #   liner = nn.Linear(self.out_featSize*3,1,bias=True).cuda()
-    #   score = torch.sigmoid(liner(inputs))
-        # return score.squeeze()
     def get_embedding(self):
         if self.isfeaturize:
           x_drug = self.inputs['drug']
-          # 先将multi-hot的特征转成连续向量
           embedded_xd = self.embedding_fp(x_drug) # (batch_size, 1024, emb_size)
           embedded_xd = embedded_xd.transpose(1,2)# (batch_size, emb_size, 1024)
           x_drug = self.conv_xd(embedded_xd)
@@ -159,7 +138,7 @@ class HDPD(nn.Module):
           x_target = self.embedding_xt.weight
 
         x_disease = self.embedding_dis.weight
-        node = torch.cat((x_drug, x_target, x_disease), dim=0) # 按行拼接
+        node = torch.cat((x_drug, x_target, x_disease), dim=0) 
         # HT = trans_scipy_to_sparse(HT).cuda()
         node, edge = self.hgnn(node, self.HT)
         return node, edge
@@ -167,7 +146,6 @@ class HDPD(nn.Module):
     def forward(self, batch_data, istrain=True):
         if self.isfeaturize:
           x_drug = self.inputs['drug']
-          # 先将multi-hot的特征转成连续向量
           embedded_xd = self.embedding_fp(x_drug) # (batch_size, 1024, emb_size)
           embedded_xd = embedded_xd.transpose(1,2)# (batch_size, emb_size, 1024)
           x_drug = self.conv_xd(embedded_xd)
@@ -185,8 +163,7 @@ class HDPD(nn.Module):
           x_target = self.embedding_xt.weight
 
         x_disease = self.embedding_dis.weight
-        node = torch.cat((x_drug, x_target, x_disease), dim=0) # 按行拼接
-        # HT = trans_scipy_to_sparse(HT).cuda()
+        node = torch.cat((x_drug, x_target, x_disease), dim=0) # 
         node, edge = self.hgnn(node, self.HT)
 
         node = node[batch_data[:,1]]
@@ -206,13 +183,10 @@ class Encoder(nn.Module):
         self.num_target = num_node_type[1]
         self.num_disease = num_node_type[2]
         self.embedding_fp = nn.EmbeddingBag(1024, self.emb_size, mode='mean').cuda()
-        self.embedding_xt = nn.EmbeddingBag(26, self.emb_size, mode='mean').cuda() # 26个英文字母
+        self.embedding_xt = nn.EmbeddingBag(26, self.emb_size, mode='mean').cuda() 
 
         self.embedding_dis = nn.Embedding(self.num_disease, self.emb_size).cuda()
         self.inputs = inputs
-        # self.weight_drug = Parameter(torch.Tensor(self.emb_size, self.hidden_size))
-        # self.weight_target = Parameter(torch.Tensor(self.emb_size, self.hidden_size))
-        # self.weight_disease = Parameter(torch.Tensor(self.emb_size, self.hidden_size))
         self.encode1 = nn.Linear(self.emb_size, self.hidden_size, bias=True)
         self.encode2 = nn.Linear(self.emb_size, self.hidden_size, bias=True)
         self.encode3 = nn.Linear(self.emb_size, self.hidden_size, bias=True)
@@ -244,9 +218,6 @@ class Encoder(nn.Module):
         self.x_drug = self.embedding_fp(x_drug_input, x_drug_offset)
         self.x_target = self.embedding_xt(x_target_input, x_target_offset)
         self.x_disease = self.embedding_dis(x_disease)
-        # print('x_drug: ',self.x_drug)
-        # print('x_target: ',self.x_target)
-        # print('x_disease: ',self.x_disease)
 
     def forward(self, batch_data):
         self.get_feature()
@@ -258,7 +229,6 @@ class Encoder(nn.Module):
         return score
 
 def train_model(model, inputs, train_data, num_data, num_node_type, args):
-    # model.scheduler.step()
     model.train()
     total_loss = 0.0
     n_batch = int(num_data / args.batch_size)
@@ -271,11 +241,9 @@ def train_model(model, inputs, train_data, num_data, num_node_type, args):
     epoch_labels = []
 
     for (batch_data, labels) in next_data_gen:
-        batch_data[:,1] = batch_data[:,1] + num_node_type[0] + num_node_type[1] #需要加上 drug number 和 target number
-        # print('max(batch_data[:,0]: ',max(batch_data[:,0]))
+        batch_data[:,1] = batch_data[:,1] + num_node_type[0] + num_node_type[1] 
         model.optimizer.zero_grad()
         scores = model(batch_data, istrain=True)
-        # print('labels: ',labels)
         labels = torch.FloatTensor(labels).cuda()
         loss = model.bceloss(scores, labels)
         loss.backward()
