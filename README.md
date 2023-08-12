@@ -1,7 +1,10 @@
 # Understanding Multivariate Drug-Target-Disease Interdependence via Event-Graph
+<img src="figs/EGNN.jpg" alt="alt" title="title">
+This repository is the implementation of the paper: 
 
-# Prerequisites
+Qu Jingwei, Wang Bei, Zhixun Li, Xiaoqing Lyu, and Zhi Tang. [Understanding Multivariate Drug-Target-DiseaseInterdependence via Event-Graph](https://ieeexplore.ieee.org/abstract/document/9669683/) *(BIBM2021)*
 
+# Requirement
 ```
 - python
 - torch
@@ -9,6 +12,10 @@
 - Bio
 - pyMeSHSim
 ```
+
+# Dataset
+The data set used in this paper is collected from [Stanford Biomedical Network Dataset Collection](https://snap.stanford.edu/biodata/index.html). You can the drug-target, drug-drug, drug-disease, disease-target, disease-disease relationships from this website.
+
 # How to use
 ```
 sh run.sh
